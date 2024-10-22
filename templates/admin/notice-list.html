@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生管理系统 - 通知管理</title>
+    <link href="/static/css/layui.css" rel="stylesheet">
+    <style>
+        .layui-card {
+            margin: 10px;
+        }
+
+        /* 优化表格和删除按钮之间的间距 */
+        #delete-button {
+            margin-top: 10px;
+        }
+
+        table {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="layui-card">
+        <div class="layui-card-header">通知管理</div>
+        <div class="layui-card-body">
+            <table class="layui-table">
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="select-all" lay-skin="primary" lay-filter="select-all" title="全选">
+                        </th>
+                        <th>通知ID</th>
+                        <th>通知内容</th>
+                        <th>创建时间</th>
+                    </tr>
+                </thead>
+                <tbody id="notice-table-body">
+                    <!-- 通知数据将动态插入到这里 -->
+                </tbody>
+            </table>
+            <button id="delete-button" class="layui-btn layui-btn-danger layui-btn-fluid">删除</button> <!-- 删除按钮 -->
+        </div>
+    </div>
+
+    <script>
+        layui.use(['jquery', 'form'], function() {
+            var $ = layui.$;
+            var form = layui.form;
+
+            // 加载通知数据
+            function loadNotices() {
+                $.ajax({
+                    url: '/notices', // 假设这是你的通知数据 API 路径
+                    method: 'GET',
+                    success: function(data) {
+                        var tbody = $('#notice-table-body');
+                        tbody.empty();  // 清空表格内容
+
+                        // 插入通知数据
+                        data.forEach(function(notice) {
+                            var row = `
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="notice-checkbox" lay-skin="primary" title="选择">
+                                    </td>
+                                    <td>${notice.notice_id}</td>
+                                    <td>${notice.content}</td>
+                                    <td>${notice.created_time}</td>
+                                </tr>
+                            `;
+                            tbody.append(row);
+                        });
+
+                        form.render(); // 重新渲染表单
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('加载通知数据失败:', error);
+                    }
+                });
+            }
+
+            // 删除选中的通知
+            $('#delete-button').click(function() {
+                var selectedIds = [];
+                $('.notice-checkbox:checked').each(function() {
+                    var row = $(this).closest('tr');
+                    var noticeId = row.find('td:nth-child(2)').text(); // 获取通知ID
+                    selectedIds.push(noticeId); // 添加到选中 ID 列表
+                });
+
+                if (selectedIds.length === 0) {
+                    layer.msg('请至少选择一个通知进行删除！'); // 提示用户选择通知
+                    return;
+                }
+
+                layer.confirm('确定要删除所选通知吗？', {
+                    btn: ['确定', '取消'] // 按钮
+                }, function() {
+                    $.ajax({
+                        url: '/delete_notices', // 假设这是你的删除 API 路径
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ notice_ids: selectedIds }), // 将选中的 ID 转换为 JSON
+                        success: function(response) {
+                            layer.msg('删除成功！');
+                            loadNotices(); // 重新加载通知列表
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('删除通知失败:', error);
+                            layer.msg('删除失败，请重试！');
+                        }
+                    });
+                }, function() {
+                    layer.msg('已取消删除操作'); // 提示用户已取消
+                });
+            });
+
+            // 初始化加载通知数据
+            loadNotices();
+
+            // 全选/取消全选
+            $('#select-all').click(function() {
+                var isChecked = $(this).is(':checked');
+                $('.notice-checkbox').prop('checked', isChecked);
+                form.render('checkbox');
+            });
+        });
+
+        // 删除单个通知的函数
+        function deleteNotice(noticeId) {
+            layer.confirm('确定要删除该通知吗？', {
+                btn: ['确定', '取消'] // 按钮
+            }, function() {
+                $.ajax({
+                    url: '/delete_notice', // 假设这是你的删除 API 路径
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ ids: [noticeId] }), // 将选中的 ID 转换为 JSON
+                    success: function(response) {
+                        layer.msg('删除成功！');
+                        loadNotices(); // 重新加载通知列表
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('删除通知失败:', error);
+                        layer.msg('删除失败，请重试！');
+                    }
+                });
+            }, function() {
+                layer.msg('已取消删除操作'); // 提示用户已取消
+            });
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生管理系统 - 考试列表</title>
+    <link href="/static/css/layui.css" rel="stylesheet">
+    <style>
+        /* 优化分页框和表格之间的间距 */
+        #pagination {
+            margin-top: 10px;
+            margin-bottom: 25px; /* 设置底部边距，确保不被页脚覆盖 */
+            text-align: center; /* 居中分页按钮 */
+        }
+
+        /* 表格和卡片样式的微调 */
+        .layui-card {
+            margin: 10px;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        /* 防止筛选和分页区域重叠时的布局问题 */
+        .layui-col-space16 > div {
+            margin-bottom: 10px;
+        }
+
+        /* 调整按钮间距和排列 */
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .button-container button {
+            flex: 1; /* 按钮均分可用空间 */
+            margin-right: 10px; /* 按钮之间的间距 */
+        }
+
+        /* 去掉最后一个按钮的右边距 */
+        .button-container button:last-child {
+            margin-right: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="layui-card">
+        <div class="layui-card-header">考试列表</div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space16">
+                <!-- 筛选区域 -->
+                <div class="layui-col-md6">
+                    <label for="exam-name">考试名称：</label>
+                    <input type="text" id="exam-name" class="layui-input" placeholder="请输入考试名称">
+                </div>
+                <div class="layui-col-md6">
+                    <label for="exam-date">考试日期：</label>
+                    <input type="date" id="exam-date" class="layui-input">
+                </div>
+                <div class="layui-col-md12">
+                    <div class="button-container">
+                        <button id="filter-button" class="layui-btn layui-btn-fluid">筛选</button>
+                        <button id="delete-button" class="layui-btn layui-btn-danger layui-btn-fluid">删除</button> <!-- 删除按钮 -->
+                    </div>
+                </div>
+            </div>
+
+            <br>
+            <!-- 考试表格 -->
+            <table class="layui-table">
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="select-all" lay-skin="primary" lay-filter="select-all" title="全选">
+                        </th>
+                        <th>考试ID</th>
+                        <th>考试名称</th>
+                        <th>考试日期</th>
+                        <th>操作</th> <!-- 添加操作列 -->
+                    </tr>
+                </thead>
+                <tbody id="exam-table-body">
+                    <!-- 考试数据将动态插入到这里 -->
+                </tbody>
+            </table>
+
+            <!-- 分页控件 -->
+            <div id="pagination"></div>
+        </div>
+    </div>
+
+    <script>
+      // 打开考试详情页面
+      function openExamDetails(examId) {
+        console.log("打开考试详情，考试ID:", examId);
+        // 这里的 URL 应该替换为你的考试排名界面的实际路径
+        var url = '/exam/ranking?exam_id=' + examId; 
+        window.open(url, '_blank'); // 在新窗口打开
+      }
+
+        layui.use(['jquery', 'form', 'laypage'], function() {
+            var $ = layui.$;
+            var form = layui.form;
+            var laypage = layui.laypage;
+
+            // 加载考试数据并初始化分页
+            function loadExams(page = 1, perPage = 10, examName = "", examDate = "") {
+                let query = $.param({
+                    page: page,
+                    per_page: perPage,
+                    exam_name: examName,
+                    exam_date: examDate
+                });
+
+                $.ajax({
+                    url: '/admin_exams?' + query,
+                    method: 'GET',
+                    success: function(data) {
+                        var tbody = $('#exam-table-body');
+                        tbody.empty();  // 清空表格内容
+
+                        // 插入考试数据
+                        data.exams.forEach(function(exam) {
+                            var row = `
+                                <tr>
+                                    <td>
+                                        <input type="checkbox" class="exam-checkbox" lay-skin="primary" title="选择">
+                                    </td>
+                                    <td>${exam.exam_id}</td>
+                                    <td>${exam.exam_name}</td>
+                                    <td>${exam.exam_date}</td>
+                                    <td>
+                                        <button class="layui-btn layui-btn-xs layui-btn-normal" onclick="openExamDetails(${exam.exam_id})">考试详情</button>
+                                    </td>
+                                </tr>
+                            `;
+                            tbody.append(row);
+                        });
+
+                        // 渲染分页
+                        laypage.render({
+                            elem: 'pagination',
+                            count: data.total, // 总记录数
+                            limit: perPage, // 每页记录数
+                            curr: page, // 当前页码
+                            jump: function(obj, first) {
+                                if (!first) {
+                                    loadExams(obj.curr, perPage, examName, examDate);
+                                }
+                            }
+                        });
+
+                        form.render(); // 重新渲染表单
+                    },
+                    error: function(xhr, status, error) {
+                        console.error('加载考试数据失败:', error);
+                    }
+                });
+            }
+
+
+
+            // 筛选按钮事件
+            $('#filter-button').click(function() {
+                var examName = $('#exam-name').val();
+                var examDate = $('#exam-date').val();
+                loadExams(1, 10, examName, examDate); // 重置为第一页
+            });
+
+            // 删除按钮事件
+            $('#delete-button').click(function() {
+                var selectedIds = [];
+                $('.exam-checkbox:checked').each(function() {
+                    // 假设每个复选框的父元素是 <tr>，并且考试ID在第二列
+                    var row = $(this).closest('tr');
+                    var examId = row.find('td:nth-child(2)').text(); // 获取考试ID
+                    selectedIds.push(examId); // 添加到选中 ID 列表
+                });
+
+                if (selectedIds.length === 0) {
+                    layer.msg('请至少选择一个考试进行删除！'); // 提示用户选择考试
+                    return;
+                }
+
+                // 发送 AJAX 请求删除选中的考试
+                layer.confirm('确定要删除所选考试吗？', {
+                    btn: ['确定', '取消'] // 按钮
+                }, function() {
+                    $.ajax({
+                        url: '/delete_exams', // 假设这是你的删除 API 路径
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ ids: selectedIds }), // 将选中的 ID 转换为 JSON
+                        success: function(response) {
+                            layer.msg('删除成功！');
+                            loadExams(); // 重新加载考试列表
+                        },
+                        error: function(xhr, status, error) {
+                            console.error('删除考试失败:', error);
+                            layer.msg('删除失败，请重试！');
+                        }
+                    });
+                }, function() {
+                    layer.msg('已取消删除操作'); // 提示用户已取消
+                });
+            });
+
+            // 初始化加载第一页考试数据
+            loadExams();
+
+            // 全选/取消全选
+            $('#select-all').click(function() {
+                var isChecked = $(this).is(':checked');
+                $('.exam-checkbox').prop('checked', isChecked);
+                form.render('checkbox');
+            });
+        });
+    </script>
+</body>
+</html>

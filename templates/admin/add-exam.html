@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>添加考试</title>
+  <link rel="stylesheet" href="/static/css/layui.css">
+</head>
+<body>
+  <div class="layui-card">
+    <div class="layui-card-header">添加考试</div>
+    <div class="layui-card-body">
+      <form class="layui-form" action="#" method="post" lay-filter="addExamForm">
+        <!-- 考试名称 -->
+        <div class="layui-form-item">
+          <label class="layui-form-label">考试名称</label>
+          <div class="layui-input-block">
+            <input type="text" name="exam_name" required lay-verify="required" 
+                   placeholder="请输入考试名称" autocomplete="off" class="layui-input">
+          </div>
+        </div>
+
+        <!-- 考试日期 -->
+        <div class="layui-form-item">
+          <label class="layui-form-label">考试日期</label>
+          <div class="layui-input-block">
+            <input type="text" name="exam_date" required lay-verify="required" 
+                   placeholder="请选择考试日期" autocomplete="off" class="layui-input" id="exam-date">
+          </div>
+        </div>
+
+        <!-- 选择科目 -->
+        <div class="layui-form-item">
+          <label class="layui-form-label">选择科目</label>
+          <div class="layui-input-block" id="subject-list">
+            <!-- 科目多选框通过 JS 动态生成 -->
+          </div>
+        </div>
+
+        <!-- 提交、重置和操作按钮 -->
+        <div class="layui-form-item">
+          <div class="layui-input-block">
+            <button type="button" class="layui-btn" lay-submit lay-filter="submitExam">提交</button>
+            <button type="reset" class="layui-btn layui-btn-primary">重置</button>
+            <button type="button" class="layui-btn layui-btn-normal add-new-subject">添加新科目</button>
+            <button type="button" class="layui-btn layui-btn-danger delete-subject">删除选中科目</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+  layui.use(['form', 'layer', 'jquery', 'laydate'], function() {
+    var form = layui.form;
+    var layer = layui.layer;
+    var $ = layui.jquery;
+    var laydate = layui.laydate;
+
+    // 初始化日期选择器
+    laydate.render({
+      elem: '#exam-date',
+      type: 'date'
+    });
+
+    // 动态加载科目列表
+    function loadSubjects() {
+      $.ajax({
+        url: '/get_subjects',  // 后端获取已有科目的 API
+        method: 'GET',
+        success: function(res) {
+          $('#subject-list').empty();  // 清空已有的内容
+          res.data.forEach(subject => {
+            $('#subject-list').append(`
+              <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                <input type="checkbox" name="subjects" value="${subject.subject_id}" 
+                       title="${subject.subject_name}" lay-skin="primary">
+              </div>
+            `);
+          });
+          form.render('checkbox');  // 重新渲染表单
+        }
+      });
+    }
+
+    // 页面加载时调用加载科目列表的函数
+    loadSubjects();
+
+    // 先移除旧的事件处理程序
+    $(document).off('click', '.add-new-subject'); 
+    // 监听“添加新科目”按钮的点击事件
+    $(document).on('click', '.add-new-subject', function() {
+      layer.prompt({title: '请输入新科目名称'}, function(value) {
+        $.ajax({
+          url: '/add_subject',  // 后端添加新科目的 API
+          method: 'POST',
+          data: {subject_name: value},
+          success: function(res) {
+            if (res.success) {
+              layer.msg(res.message, {icon: 1});
+              loadSubjects();  // 重新加载科目列表
+            } else {
+              layer.msg(res.message, {icon: 2});
+            }
+          }
+        });
+        layer.close();
+      });
+    });
+
+    // 先移除旧的事件处理程序
+    $(document).off('click', '.delete-subject'); 
+    // 监听“删除选中科目”按钮的点击事件
+    $(document).on('click', '.delete-subject', function() {
+      const selectedSubjects = $("input[name='subjects']:checked")
+        .map(function() {
+          return $(this).val();
+        }).get();
+
+      if (selectedSubjects.length === 0) {
+        layer.msg('请至少选择一个科目进行删除！', {icon: 0});
+        return;
+      }
+
+      layer.confirm('确定要删除选中的科目吗？', {
+        btn: ['确定', '取消']
+      }, function() {
+        $.ajax({
+          url: '/delete_subjects',  // 后端删除科目的 API
+          method: 'POST',
+          contentType: 'application/json',
+          data: JSON.stringify({subject_ids: selectedSubjects}),
+          success: function(res) {
+            if (res.success) {
+              layer.msg('删除成功！', {icon: 1});
+              loadSubjects();  // 重新加载科目列表
+            } else {
+              layer.msg('删除失败，请重试！', {icon: 2});
+            }
+          },
+          error: function() {
+            layer.msg('请求失败，请检查网络！', {icon: 2});
+          }
+        });
+        layer.close();
+      });
+    });
+
+    // 监听提交事件
+    form.on('submit(submitExam)', function(data) {
+      const examName = data.field.exam_name;
+      const examDate = data.field.exam_date;
+
+      const selectedSubjects = $("input[name='subjects']:checked")
+        .map(function() {
+          return $(this).val();
+        }).get();
+
+      if (selectedSubjects.length === 0) {
+        layer.msg('请至少选择一个科目！', {icon: 0});
+        return false;
+      }
+
+      // 向后端发送数据
+      $.ajax({
+        url: '/add_exam',  // 后端添加考试的 API
+        method: 'POST',
+        contentType: 'application/json',
+        data: JSON.stringify({
+          exam_name: examName,
+          exam_date: examDate,
+          subjects: selectedSubjects
+        }),
+        success: function(res) {
+          if (res.success) {
+            layer.msg('考试添加成功！', {icon: 1});
+          } else {
+            layer.msg('考试添加失败，请重试！', {icon: 2});
+          }
+        },
+        error: function() {
+          layer.msg('请求失败，请检查网络！', {icon: 2});
+        }
+      });
+
+      return false;
+    });
+  });
+  </script>
+</body>
+</html>

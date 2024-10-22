@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生管理系统 - 学生列表</title>
+    <link href="/static/css/layui.css" rel="stylesheet">
+    <style>
+        #pagination {
+            margin-top: 10px;
+            margin-bottom: 25px;
+            text-align: center;
+        }
+
+        .layui-card {
+            margin: 10px;
+        }
+
+        table {
+            width: 100%;
+        }
+
+        .layui-col-space16>div {
+            margin-bottom: 10px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .button-container button {
+            flex: 1;
+            margin-right: 10px;
+        }
+
+        .button-container button:last-child {
+            margin-right: 0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layui-card">
+        <div class="layui-card-header">学生列表</div>
+        <div class="layui-card-body">
+            <div class="layui-form layui-row layui-col-space16">
+                <!-- 筛选区域 -->
+                <div class="layui-col-md4">
+                    <label for="grade-input">输入年级：</label>
+                    <input type="text" id="grade-input" class="layui-input" placeholder="请输入年级">
+                </div>
+                <div class="layui-col-md4">
+                    <label for="major-input">输入专业：</label>
+                    <input type="text" id="major-input" class="layui-input" placeholder="请输入专业">
+                </div>
+                <div class="layui-col-md4">
+                    <label for="class-input">输入班级：</label>
+                    <input type="text" id="class-input" class="layui-input" placeholder="请输入班级">
+                </div>
+                <div class="layui-col-md12">
+                    <div class="button-container">
+                        <button id="filter-button" class="layui-btn layui-btn-fluid">筛选</button>
+                        <button id="delete-button" class="layui-btn layui-btn-danger layui-btn-fluid">删除</button>
+                    </div>
+                </div>
+            </div>
+
+            <br>
+            <table class="layui-table">
+                <thead>
+                    <tr>
+                        <th>
+                            <input type="checkbox" id="select-all" lay-skin="primary" lay-filter="select-all" title="全选">
+                        </th>
+                        <th>学号</th>
+                        <th>姓名</th>
+                        <th>年龄</th>
+                        <th>性别</th>
+                        <th>年级</th>
+                        <th>专业</th>
+                        <th>班级</th>
+                    </tr>
+                </thead>
+                <tbody id="student-table-body">
+                    <!-- 学生数据将动态插入到这里 -->
+                </tbody>
+            </table>
+
+            <div id="pagination"></div>
+        </div>
+    </div>
+
+    <script>
+        layui.use(['jquery', 'form', 'laypage'], function () {
+            var $ = layui.$;
+            var form = layui.form;
+            var laypage = layui.laypage;
+
+            function loadStudents(page = 1, perPage = 10, grade = "", major = "", className = "") {
+                let query = $.param({
+                    page: page,
+                    per_page: perPage,
+                    grade: grade,
+                    major: major,
+                    class_name: className
+                });
+
+                $.ajax({
+                    url: '/students?' + query,
+                    method: 'GET',
+                    success: function (data) {
+                        var tbody = $('#student-table-body');
+                        tbody.empty();
+
+                        data.students.forEach(function (student) {
+                            var row = `
+                                <tr>
+                                    <td><input type="checkbox" class="student-checkbox" lay-skin="primary" title="选择"></td>
+                                    <td>${student.student_id}</td>
+                                    <td>${student.name}</td>
+                                    <td>${student.age}</td>
+                                    <td>${student.gender}</td>
+                                    <td>${student.grade}</td>
+                                    <td>${student.major}</td>
+                                    <td>${student.class_name}</td>
+                                    <td>
+                                        <button class="layui-btn layui-btn-sm import-score-button"
+                                            data-student-id="${student.student_id}">导入成绩
+                                        </button>
+                                    </td>
+                                </tr>`;
+                            tbody.append(row);
+                        });
+
+                        laypage.render({
+                            elem: 'pagination',
+                            count: data.total,
+                            limit: perPage,
+                            curr: page,
+                            jump: function (obj, first) {
+                                if (!first) {
+                                    loadStudents(obj.curr, perPage, grade, major, className);
+                                }
+                            }
+                        });
+
+                        form.render();
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('加载学生数据失败:', error);
+                    }
+                });
+            }
+
+            $('#student-table-body').on('click', '.import-score-button', function () {
+                var studentId = $(this).data('student-id');
+                window.open(`/import-score-html?student_id=${studentId}`, '_blank');
+            });
+
+
+            $('#filter-button').click(function () {
+                var grade = $('#grade-input').val();
+                var major = $('#major-input').val();
+                var className = $('#class-input').val();
+                loadStudents(1, 10, grade, major, className);
+            });
+
+            $('#delete-button').click(function () {
+                var selectedIds = [];
+                $('.student-checkbox:checked').each(function () {
+                    var row = $(this).closest('tr');
+                    var studentId = row.find('td:nth-child(2)').text();
+                    selectedIds.push(studentId);
+                });
+
+                if (selectedIds.length === 0) {
+                    layer.msg('请至少选择一个学生进行删除！');
+                    return;
+                }
+
+                layer.confirm('确定要删除所选学生吗？', {
+                    btn: ['确定', '取消']
+                }, function () {
+                    $.ajax({
+                        url: '/delete_students',
+                        method: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify({ ids: selectedIds }),
+                        success: function (response) {
+                            layer.msg('删除成功！');
+                            loadStudents();
+                        },
+                        error: function (xhr, status, error) {
+                            console.error('删除学生失败:', error);
+                            layer.msg('删除失败，请重试！');
+                        }
+                    });
+                }, function () {
+                    layer.msg('已取消删除操作');
+                });
+            });
+
+            loadStudents();
+
+            $('#select-all').click(function () {
+                var isChecked = $(this).is(':checked');
+                $('.student-checkbox').prop('checked', isChecked);
+                form.render('checkbox');
+            });
+        });
+    </script>
+</body>
+
+</html>

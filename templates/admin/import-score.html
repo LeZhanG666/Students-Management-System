@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>导入成绩</title>
+    <link href="/static/css/layui.css" rel="stylesheet">
+    <script src="/static/layui.js"></script>
+    <style>
+        body {
+            background-color: #f0f2f5;
+            padding: 20px;
+        }
+
+        .layui-card {
+            margin: 10px auto;
+            width: 600px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .layui-card-header {
+            background-color: #4b8df8;
+            color: #fff;
+            font-weight: bold;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .student-name {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 15px;
+        }
+
+        .layui-form-label {
+            font-weight: bold;
+        }
+
+        .layui-btn {
+            background-color: #4b8df8;
+            border-color: #4b8df8;
+            width: 100%;
+        }
+
+        .layui-btn:hover {
+            background-color: #367bc8;
+            border-color: #367bc8;
+        }
+
+        .layui-form-item {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="layui-card">
+        <div class="layui-card-header">导入成绩</div>
+        <div class="layui-card-body">
+            <div class="student-name" id="student-name"></div> <!-- 学生姓名显示 -->
+            <form class="layui-form" id="score-form">
+                <div class="layui-form-item">
+                    <label class="layui-form-label" for="exam-select">考试名称</label>
+                    <div class="layui-input-block">
+                        <select id="exam-select" lay-filter="exam-select" class="layui-input">
+                            <option value="">请选择考试</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="subjects-container"></div>
+
+                <div class="layui-form-item">
+                    <button type="submit" class="layui-btn">保存成绩</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        layui.use(['jquery', 'form', 'layer'], function () {
+            var $ = layui.$;
+            var form = layui.form;
+            var layer = layui.layer; // 引入 layer
+            var studentId = new URLSearchParams(window.location.search).get('student_id');
+
+            // 假设你有一个 API 可以获取学生姓名
+            $.ajax({
+                url: `/student_name/${studentId}`,
+                method: 'GET',
+                success: function (data) {
+                    $('#student-name').text(`当前学生：${data.name}`); // 显示学生姓名
+                }
+            });
+
+            // 加载考试列表
+            $.ajax({
+                url: '/admin_exams',
+                method: 'GET',
+                success: function (data) {
+                    var examSelect = $('#exam-select');
+                    data.exams.forEach(function (exam) {
+                        var option = `<option value="${exam.exam_id}">${exam.exam_name}</option>`;
+                        examSelect.append(option);
+                    });
+                    form.render('select');
+                }
+            });
+
+            // 监听考试选择事件，加载对应的科目
+            form.on('select(exam-select)', function (data) {
+                var examId = data.value;
+                loadSubjects(examId);
+            });
+
+            // 加载考试的科目
+            function loadSubjects(examId) {
+                $.ajax({
+                    url: `/exams/${examId}/subjects`,
+                    method: 'GET',
+                    success: function (data) {
+                        var container = $('#subjects-container');
+                        container.empty();
+                        data.subjects.forEach(function (subject) {
+                            var field = `
+                                <div class="layui-form-item">
+                                    <label class="layui-form-label">${subject.subject_name}</label>
+                                    <div class="layui-input-block">
+                                        <input type="number" name="scores" 
+                                               required lay-verify="required" 
+                                               placeholder="请输入分数" class="layui-input" 
+                                               data-subject-id="${subject.subject_id}">
+                                    </div>
+                                </div>`;
+                            container.append(field);
+                        });
+                        form.render(); // 重新渲染表单
+                    }
+                });
+            }
+
+            // 提交成绩表单
+            $('#score-form').on('submit', function (e) {
+                e.preventDefault();
+
+                var scores = [];
+                // 遍历输入框，收集成绩和对应的 subject_id
+                $('#subjects-container input[name="scores"]').each(function () {
+                    var subjectId = $(this).data('subject-id');
+                    var score = $(this).val();
+                    if (score) { // 仅在分数不为空时添加
+                        scores.push({
+                            subject_id: subjectId,
+                            value: score
+                        });
+                    }
+                });
+
+                var examId = $('#exam-select').val();
+
+                // 检查是否已存在成绩
+                $.ajax({
+                    url: '/import_score',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        student_id: studentId,
+                        exam_id: examId,
+                        scores: scores
+                    }),
+                    success: function (response) {
+                        // 检查返回的信息
+                        if (response.message.includes('成绩已存在')) {
+                            layer.confirm(response.message + '，是否继续?', {
+                                btn: ['确认', '取消'] // 按钮
+                            }, function () {
+                                replaceScores(studentId, examId, scores);
+                            }, function () {
+                                layer.msg('成绩导入已取消');
+                            });
+                        } else {
+                            layer.msg(response.message);
+                        }
+                    },
+                    error: function (xhr) {
+                        console.error('成绩导入失败:', xhr.responseText);
+                        layer.msg('成绩导入失败，请重试！');
+                    }
+                });
+            });
+
+            // 提交成绩的函数
+            function replaceScores(studentId, examId, scores) {
+                $.ajax({
+                    url: '/replace_score',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        student_id: studentId,
+                        exam_id: examId,
+                        scores: scores
+                    }),
+                    success: function (response) {
+                        layer.msg(response.message);
+                    },
+                    error: function (xhr) {
+                        console.error('成绩导入失败:', xhr.responseText);
+                        layer.msg('成绩导入失败，请重试！');
+                    }
+                });
+            }
+        });
+    </script>
+</body>
+
+</html>

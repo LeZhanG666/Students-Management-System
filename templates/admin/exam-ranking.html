@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考试排名 - 学生管理系统</title>
+    <link href="/static/css/layui.css" rel="stylesheet">
+    <style>
+        body {
+            padding: 20px;
+            background-color: #f2f2f2;
+        }
+        .layui-card {
+            margin-top: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .layui-card-header {
+            background-color: #1E9FFF;
+            color: #fff;
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+        .layui-table th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
+        .layui-table tr:hover {
+            background-color: #f9f9f9;
+        }
+        .filter-container {
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="layui-container">
+        <div class="filter-container">
+            <label for="class-filter">筛选班级：</label>
+            <select id="class-filter" class="layui-select">
+                <option value="all">全部班级</option>
+                <!-- 班级选项将在这里动态插入 -->
+            </select>
+        </div>
+
+        <div class="layui-card">
+            <div class="layui-card-header">考试排名</div>
+            <div class="layui-card-body">
+                <h3 id="exam-name-title">考试名称：<span id="exam-name" style="color: #1E9FFF;">加载中...</span></h3>
+                <table class="layui-table layui-form">
+                    <thead>
+                        <tr id="table-header">
+                            <th>排名</th>
+                            <th>学生ID</th>
+                            <th>学生姓名</th>
+                            <th>班级</th>
+                            <!-- 科目列将在这里动态插入 -->
+                        </tr>
+                    </thead>
+                    <tbody id="ranking-table-body">
+                        <tr>
+                            <td colspan="4" style="text-align: center;">正在加载数据...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="/static/layui.js"></script>
+    <script>
+        // 获取 URL 参数中的 exam_id
+        function getQueryParam(param) {
+            var urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        // 生成班级下拉菜单选项
+        function populateClassFilter(classes) {
+            const classFilter = $('#class-filter');
+            classes.forEach(cls => {
+                classFilter.append(`<option value="${cls}">${cls}</option>`);
+            });
+        }
+
+        // 加载考试排名数据并动态生成表格
+        function loadExamRanking(examId) {
+            $.ajax({
+                url: `/exam/ranking/data?exam_id=${examId}`,
+                method: 'GET',
+                success: function(data) {
+                    console.log('获取到的数据:', data);
+
+                    // 设置考试名称
+                    $('#exam-name').text(data.exam_name);
+
+                    const headerRow = $('#table-header');
+                    const tbody = $('#ranking-table-body');
+                    tbody.empty();  // 清空表格内容
+
+                    if (data.scores && data.scores.length > 0) {
+                        // 动态生成科目列标题
+                        data.subjects.forEach(subject => {
+                            headerRow.append(`<th>${subject.subject_name}</th>`);
+                        });
+
+                        headerRow.append(`<th>总成绩</th>`);
+
+                        // 收集所有班级名称
+                        const classes = [...new Set(data.scores.map(item => item.class_name))];
+                        populateClassFilter(classes);
+
+                        // 填充每个学生的成绩数据
+                        data.scores.forEach((item, index) => {
+                            const row = generateRow(item, index, data.subjects);
+                            tbody.append(row);
+                        });
+                    } else {
+                        tbody.append('<tr><td colspan="4" style="text-align: center;">没有找到任何成绩数据。</td></tr>');
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('加载考试排名数据失败:', error);
+                    alert('加载考试排名数据失败，请重试！');
+                }
+            });
+        }
+
+        // 根据成绩项生成表格行
+        function generateRow(item, index, subjects) {
+            let row = `
+                <tr data-class="${item.class_name}">
+                    <td>${index + 1}</td>
+                    <td>${item.student_id}</td>
+                    <td>${item.student_name}</td>
+                    <td>${item.class_name}</td>
+            `;
+
+            subjects.forEach(subject => {
+                const subjectScore = item.subject_scores.find(s => s.subject_id === subject.subject_id);
+                row += `<td>${subjectScore ? subjectScore.score : '无'}</td>`;
+            });
+
+            row += `<td>${item.total_score}</td></tr>`;
+            return row;
+        }
+
+        // 绑定班级筛选事件
+        $('#class-filter').on('change', function() {
+            const selectedClass = $(this).val();
+            filterByClass(selectedClass);
+        });
+
+        // 根据选择的班级过滤表格内容，并重新计算排名
+        function filterByClass(selectedClass) {
+            let rank = 1;  // 初始化排名
+
+            $('#ranking-table-body tr').each(function() {
+                const rowClass = $(this).data('class');  // 获取行的班级
+
+                if (selectedClass === 'all' || rowClass === selectedClass) {
+                    $(this).show();  // 显示匹配的行
+                    $(this).find('td:first').text(rank);  // 更新排名
+                    rank++;  // 递增排名
+                } else {
+                    $(this).hide();  // 隐藏不匹配的行
+                }
+            });
+        }
+
+
+        // 初始化页面，加载考试排名数据
+        const examId = getQueryParam('exam_id');
+        if (examId) {
+            loadExamRanking(examId);
+        } else {
+            alert('缺少考试ID！');
+        }
+    </script>
+</body>
+</html>

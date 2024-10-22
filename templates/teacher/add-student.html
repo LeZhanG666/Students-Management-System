@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生管理系统 - 添加学生</title>
+    <link href="/static/css/layui.css" rel="stylesheet">
+    <style>
+        /* 可以根据需要调整样式 */
+        .layui-card {
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="layui-card">
+        <div class="layui-card-header">添加学生</div>
+        <div class="layui-card-body">
+            <form class="layui-form" lay-filter="formAddStudent">
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="name-select">姓名:</label>
+                        <input type="text" name="name" required lay-verify="required" placeholder="请输入姓名" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="id-select">学号:</label>
+                        <input type="text" name="student_id" required lay-verify="required" placeholder="请输入学号" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="age-select">年龄:</label>
+                        <input type="number" name="age" required lay-verify="required" placeholder="请输入年龄" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="gender-select">性别：</label>
+                        <select name="gender" id="gender-select" lay-verify="required">
+                            <option value="">请选择性别</option>
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <button type="button" id="add-button" class="layui-btn" lay-submit lay-filter="addStudent">提交</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // 使用 layui 的 form 模块
+        layui.use(['jquery','form','layer'], function() {
+            var $ = layui.$;
+            var form = layui.form;
+            var layer = layui.layer;
+            form.render()
+
+            // 监听提交
+            form.on('submit(addStudent)', function(data) {
+                // 提交表单数据的逻辑
+                var field = data.field
+                layer.confirm('确定要添加该学生吗？', {
+                    btn: ['确定', '取消'] // 按钮
+                }, function() {
+                    $.ajax({
+                        url: "/add_students",
+                        type: "POST",
+                        data: field,
+                        success: function(response) {
+                            if (response.success) {
+                                layer.msg('添加成功');
+                            } else {
+                                layer.msg(response.message);
+                            }
+                        },
+                        error: function() {
+                            layer.msg('添加失败，请稍后重试');
+                        }
+                    });
+                }, function() {
+                    // 用户点击“取消”按钮时执行的操作
+                    layer.msg('已取消添加操作'); // 提示用户已取消
+                });
+
+                return false; // 阻止默认表单提交
+            });
+        });
+    </script>
+</body>
+</html>

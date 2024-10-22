@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>学生管理系统</title>
+  <meta name="renderer" content="webkit">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="/static/css/layui.css" rel="stylesheet">
+  <style>
+      body {
+          background-color: #e9f5ff;
+      }
+      .layui-footer {
+          text-align: center;
+          background-color: #f1f1f1;
+          color: #5e5e5e;
+      }
+      .user-info-card {
+          padding: 20px;
+          border-radius: 8px;
+          background-color: #ffffff;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+      }
+      .user-info-card h3 {
+          margin-bottom: 15px;
+          color: #333;
+      }
+      .user-info-card p {
+          margin: 5px 0;
+          color: #666;
+      }
+      .layui-nav-item a:hover {
+          background-color: #52ceb9;
+      }
+  </style>
+</head>
+<body>
+<div class="layui-layout layui-layout-admin">
+  <div class="layui-header">
+    <div class="layui-logo" style="cursor: pointer;" onclick="loadPages('/teacher-home-html')">学生管理系统</div>
+    <ul class="layui-nav layui-layout-right">
+      <li class="layui-nav-item">
+        <a href="javascript:;" class="user-name" onclick="showUserInfo()">
+         <!--动态插入登录人名字-->
+        </a>
+        <dl class="layui-nav-child">
+          <dd><a href="javascript:;" onclick="showUserInfo()">个人中心</a></dd>
+          <dd><a href="javascript:;">设置</a></dd>
+          <dd><a href="javascript:;" onclick="logout()">退出</a></dd>
+        </dl>
+      </li>
+    </ul>
+  </div>
+
+  <div class="layui-side layui-bg-black">
+    <div class="layui-side-scroll">
+      <ul class="layui-nav layui-nav-tree" lay-filter="test">
+        <li class="layui-nav-item">
+          <a href="javascript:;">班级管理</a>
+          <dl class="layui-nav-child">
+            <dd><a href="javascript:;" onclick="loadPages('/student-list-html')">学生列表</a></dd>
+            <dd><a href="javascript:;" onclick="loadPages('/add-student-html')">添加学生</a></dd>
+          </dl>
+        </li>
+        <li class="layui-nav-item">
+            <a href="javascript:;">成绩管理</a>
+            <dl class="layui-nav-child">
+              <dd><a href="javascript:;" onclick="loadPages('admin-exam-list-html')">考试列表</a></dd>
+              <dd><a href="javascript:;" onclick="loadPages('add-exam-html')">添加考试</a></dd>
+            </dl>
+        </li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="layui-body">
+    <div style="padding: 15px;">
+      <!-- 页面内容将动态加载到这里 -->
+    </div>
+  </div>
+
+  <div class="layui-footer">
+    <div>学生管理系统 联系邮箱: 2824162245@qq.com</div>
+  </div>
+</div>
+
+<script src="/static/layui.js"></script>
+<script>
+layui.use(['element', 'layer', 'util'], function(){
+  var element = layui.element;
+  var layer = layui.layer;
+  var $ = layui.$;
+  // 页面加载时获取登录者名字并插入
+  function loadUserName() {
+    $.ajax({
+      url: '/get_info', // 获取用户信息的接口
+      method: 'GET',
+      success: function(data) {
+        $('.user-name').text(data.name || '未登录'); // 插入用户名字
+      },
+      error: function() {
+        layer.msg('无法获取用户信息，请稍后重试。', { icon: 2 });
+      }
+    });
+  }
+
+  // 调用函数加载用户名
+  loadUserName();
+
+  // 显示用户信息弹窗
+  // 显示用户信息弹窗
+  window.showUserInfo = function() {
+    $.ajax({
+        url: '/get_info',
+        method: 'GET',
+        success: function(data) {
+            const content = `
+                <div class="layui-card user-info-card">
+                    <div class="layui-card-header">
+                        <h3>个人中心</h3>
+                    </div>
+                    <div class="layui-card-body">
+                        <div class="layui-form-item">
+                            <label class="layui-form-label"><strong>用户名：</strong></label>
+                            <div class="layui-input-block">
+                                <p class="layui-text">${data.id}</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label"><strong>密码：</strong></label>
+                            <div class="layui-input-block">
+                                <input type="text" id="pwd" value="${data.pwd}" 
+                                       class="layui-input" required>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label"><strong>姓名：</strong></label>
+                            <div class="layui-input-block">
+                                <input type="text" id="name" value="${data.name}" 
+                                       class="layui-input" required>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label"><strong>专业：</strong></label>
+                            <div class="layui-input-block">
+                                <p class="layui-text">${data.major}</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label"><strong>年级：</strong></label>
+                            <div class="layui-input-block">
+                                <p class="layui-text">${data.grade}</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label"><strong>班级：</strong></label>
+                            <div class="layui-input-block">
+                                <p class="layui-text">${data.class_name}</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <label class="layui-form-label"><strong>角色：</strong></label>
+                            <div class="layui-input-block">
+                                <p class="layui-text">${data.role}</p>
+                            </div>
+                        </div>
+
+                        <div class="layui-form-item">
+                            <div class="layui-input-block">
+                                <button id="update-button" type="button" class="layui-btn">
+                                    更新信息
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            layer.open({
+                type: 1,
+                title: '个人中心',
+                area: ['700px', '600px'],
+                content: content,
+                btn: ['关闭'],
+                shade: 0.5,
+                shadeClose: true,
+            });
+
+            // 更新信息按钮点击事件
+            $('#update-button').on('click', function() {
+                var newName = $('#name').val();
+                var newPwd = $('#pwd').val();
+                $.ajax({
+                    url: '/update_info',
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ name: newName, pwd: newPwd }),
+                    success: function(response) {
+                        layer.msg(response.message, { icon: 1 });
+                    },
+                    error: function(xhr) {
+                        var errorMsg = xhr.responseJSON ? xhr.responseJSON.message : '更新失败，请稍后重试！';
+                        layer.msg(errorMsg, { icon: 2 });
+                    }
+                });
+            });
+        },
+        error: function() {
+            layer.msg('获取用户信息失败，请稍后重试。', { icon: 2 });
+        }
+    });
+  };
+
+  window.loadPages = function(bodyPage) {
+    if (bodyPage) {
+      $.ajax({
+        url: bodyPage,
+        type: 'GET',
+        dataType: 'html',
+        success: function(data) {
+          $('.layui-body').html(data);
+          element.render('nav', 'test');
+        },
+        error: function(xhr, status, error) {
+          console.error(`主体页面加载失败: ${error}`);
+          layer.msg('主体页面加载失败，请稍后重试。', {icon: 2});
+        }
+      });
+    } else {
+      $('.layui-body').html('<blockquote class="layui-elem-quote layui-text">欢迎使用学生管理系统学生端！</blockquote>');
+    }
+  };
+
+  loadPages('/teacher-home-html');
+
+  window.logout = function() {
+    layer.confirm('确定要退出吗？', {
+        btn: ['确定', '取消']
+    }, function() {
+        fetch('/logout', {
+            method: 'POST',
+            credentials: 'include'
+        })
+        .then(response => {
+            if (response.ok) {
+                layer.msg('成功退出', { icon: 1 });
+                window.location.href = '/login'; // 重定向到登录页
+            } else {
+                layer.msg('退出失败，请稍后再试。', { icon: 2 });
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            layer.msg('退出失败，请稍后再试。', { icon: 2 });
+        });
+    });
+};
+
+});
+</script>
+</body>
+</html>

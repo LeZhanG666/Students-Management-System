@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>注册帐号</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <style>
+        /* 背景样式 */
+        body {
+            min-height: 100vh; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            position: relative; 
+            overflow: hidden;
+            background: linear-gradient(to bottom, #000000, #434343); /* 黑色渐变背景 */
+        }
+
+        /* 星星粒子效果 */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* 确保在背景 */
+        }
+
+        /* 标题样式 */
+        .title {
+            font-size: 24px; 
+            color: #fff; /* 白色字体 */
+            text-align: center; 
+            margin-bottom: 20px; 
+            position: relative; 
+            z-index: 1; 
+        }
+
+        /* 注册框样式 */
+        .demo-login-container {
+            width: 360px; 
+            padding: 30px; 
+            background-color: rgba(255, 255, 255, 0.9); /* 半透明背景 */
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.3); 
+            border-radius: 8px; 
+            position: relative; 
+            z-index: 1; 
+            opacity: 0.95;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="starCanvas"></canvas> <!-- 粒子效果的 Canvas -->
+
+    <h1 class="title">注册帐号</h1> 
+    <div class="demo-login-container">
+        <form class="layui-form">
+            <div class="layui-form-item">
+                <div class="layui-input-wrap">
+                    <div class="layui-input-prefix">
+                        <i class="layui-icon layui-icon-username"></i>
+                    </div>
+                    <input type="text" name="username" lay-verify="required" placeholder="用户名" lay-reqtext="请填写用户名" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <div class="layui-input-wrap">
+                    <div class="layui-input-prefix">
+                        <i class="layui-icon layui-icon-password"></i>
+                    </div>
+                    <input type="password" name="password" lay-verify="required" placeholder="密码" lay-reqtext="请填写密码" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <div class="layui-input-wrap">
+                    <div class="layui-input-prefix">
+                        <i class="layui-icon layui-icon-password"></i>
+                    </div>
+                    <input type="password" name="confirm_password" lay-verify="required" placeholder="确认密码" lay-reqtext="请确认密码" autocomplete="off" class="layui-input">
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <button type="button" class="layui-btn layui-btn-fluid" lay-submit lay-filter="demo-register">注册</button>
+            </div>
+
+            <div class="layui-form-item demo-login-other">
+                <a href="/login">已有帐号？登录</a>
+            </div>
+        </form>
+    </div>
+
+    <script src="/static/layui.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // 动态粒子效果
+        const canvas = document.getElementById('starCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let stars = [];
+
+        function Star() {
+            this.x = Math.random() * canvas.width;
+            this.y = Math.random() * canvas.height;
+            this.size = Math.random() * 2 + 1;
+            this.speedX = Math.random() * 0.5 - 0.25; 
+            this.speedY = Math.random() * 0.5 - 0.25; 
+        }
+
+        function init() {
+            stars = [];
+            for (let i = 0; i < 200; i++) {
+                stars.push(new Star());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            for (let i = 0; i < stars.length; i++) {
+                let star = stars[i];
+                ctx.fillStyle = 'white';
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+                star.x += star.speedX;
+                star.y += star.speedY;
+
+                // 如果星星超出画布，重新生成
+                if (star.x > canvas.width || star.x < 0 || star.y > canvas.height || star.y < 0) {
+                    stars.splice(i, 1);
+                    i--;
+                    stars.push(new Star());
+                }
+            }
+            requestAnimationFrame(animate);
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            init();
+        });
+
+        layui.use(['form', 'layer'], function() {
+            var form = layui.form;
+            var layer = layui.layer;
+
+            // 注册表单提交事件
+            form.on('submit(demo-register)', function(data) {
+                var field = data.field;
+
+                // 处理注册逻辑
+                $.ajax({
+                    url: '/register', // 注册请求的 URL
+                    type: 'POST',
+                    data: field,
+                    success: function(response) {
+                        if (response.success) {
+                            layer.msg('注册成功');
+                            window.location.href = '/login'; // 注册成功后跳转到登录页面
+                        } else {
+                            layer.msg(response.message);
+                        }
+                    },
+                    error: function() {
+                        layer.msg('注册失败,请联系管理员');
+                    }
+                });
+
+                return false; // 阻止默认提交
+            });
+        });
+
+        init();
+        animate();
+    </script>
+</body>
+</html>

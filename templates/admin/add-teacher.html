@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>学生管理系统 - 添加教师</title>
+    <link href="/static/css/layui.css" rel="stylesheet">
+    <style>
+        .layui-card {
+            margin: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="layui-card">
+        <div class="layui-card-header">添加教师</div>
+        <div class="layui-card-body">
+            <form class="layui-form" lay-filter="formAddTeacher">
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="name-input">姓名:</label>
+                        <input type="text" name="name" required lay-verify="required" placeholder="请输入姓名" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="id-input">教师ID:</label>
+                        <input type="text" name="teacher_id" required lay-verify="required" placeholder="请输入教师ID" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="age-input">年龄:</label>
+                        <input type="number" name="age" required lay-verify="required" placeholder="请输入年龄" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="gender-select">性别：</label>
+                        <select name="gender" id="gender-select" lay-verify="required">
+                            <option value="">请选择性别</option>
+                            <option value="男">男</option>
+                            <option value="女">女</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="major-input">专业：</label>
+                        <input type="text" name="major" required lay-verify="required" placeholder="请输入专业" autocomplete="off" class="layui-input">
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="class-select">班级：</label>
+                        <select name="class_name" id="class-select" lay-verify="required">
+                            <option value="">请选择班级</option>
+                            <option value="1班">1班</option>
+                            <option value="2班">2班</option>
+                            <option value="3班">3班</option>
+                            <option value="4班">4班</option>
+                            <option value="5班">5班</option>
+                            <option value="6班">6班</option>
+                            <option value="7班">7班</option>
+                            <option value="8班">8班</option>
+                            <option value="9班">9班</option>
+                            <option value="10班">10班</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <label for="grade-select">年级：</label>
+                        <select name="grade" id="grade-select" lay-verify="required">
+                            <option value="">请选择年级</option>
+                            <option value="小一">小一</option>
+                            <option value="小二">小二</option>
+                            <option value="小三">小三</option>
+                            <option value="小四">小四</option>
+                            <option value="小五">小五</option>
+                            <option value="小六">小六</option>
+                            <option value="初一">初一</option>
+                            <option value="初二">初二</option>
+                            <option value="初三">初三</option>
+                            <option value="高一">高一</option>
+                            <option value="高二">高二</option>
+                            <option value="高三">高三</option>
+                            <option value="大一">大一</option>
+                            <option value="大二">大二</option>
+                            <option value="大三">大三</option>
+                            <option value="大四">大四</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="layui-form-item">
+                    <div class="layui-input-block">
+                        <button type="button" id="add-button" class="layui-btn" lay-submit lay-filter="addTeacher">提交</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        layui.use(['jquery', 'form', 'layer'], function() {
+            var $ = layui.$;
+            var form = layui.form;
+            var layer = layui.layer;
+            form.render()
+
+            // 监听提交
+            form.on('submit(addTeacher)', function(data) {
+                var field = data.field;
+                layer.confirm('确定要添加该教师吗？', {
+                    btn: ['确定', '取消'] // 按钮
+                }, function() {
+                    $.ajax({
+                        url: "/add_teachers",
+                        type: "POST",
+                        data: field,
+                        success: function(response) {
+                            if (response.success) {
+                                layer.msg('添加成功');
+                            } else {
+                                layer.msg(response.message);
+                            }
+                        },
+                        error: function() {
+                            layer.msg('添加失败，请稍后重试');
+                        }
+                    });
+                }, function() {
+                    layer.msg('已取消添加操作');
+                });
+
+                return false; // 阻止默认表单提交
+            });
+        });
+    </script>
+</body>
+</html>

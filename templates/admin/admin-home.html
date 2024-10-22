@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生管理系统后台</title>
+  <link rel="stylesheet" href="/static/css/layui.css">
+  
+  <style>
+    /* 页面整体样式 */
+    body {
+      background-color: #f2f2f2;
+      font-family: 'Arial', sans-serif;
+    }
+
+    #dashboard {
+      padding: 20px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+      border-radius: 15px;
+      background-color: white;
+    }
+
+    /* 美化卡片组件 */
+    .layui-card {
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      transition: transform 0.2s, box-shadow 0.2s;
+      margin-bottom: 20px; /* 增加卡片之间的间距 */
+    }
+
+    .layui-card:hover {
+      transform: scale(1.02);
+      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+    }
+
+    /* 卡片标题样式 */
+    .layui-card-header {
+      font-size: 18px;
+      font-weight: bold;
+      background-color: #2C3E50; /* 深色背景 */
+      color: white;
+      border-radius: 10px 10px 0 0;
+      padding: 15px;
+    }
+
+    /* 欢迎块墨绿色渐变样式 */
+    blockquote {
+      background: linear-gradient(to right, #1B3A3D, #4B8B8C); /* 墨绿色渐变 */
+      color: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+      margin-bottom: 20px; /* 增加与下方内容的间距 */
+    }
+
+    /* 通知列表样式 */
+    #notice-list li {
+      margin-top: 5px;
+      margin-bottom: 8px;
+      font-size: 15px;
+    }
+
+    /* 系统简介段落样式 */
+    .layui-card-body p {
+      line-height: 1.6;
+      color: #333; /* 深色字体 */
+    }
+
+    /* 响应式支持 */
+    @media (max-width: 768px) {
+      .layui-card-header {
+        text-align: center;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+<div id="dashboard">
+  <div class="layui-row layui-col-space15">
+    
+    <!-- 欢迎信息 -->
+    <div class="layui-col-md12">
+      <blockquote class="layui-elem-quote layui-text" style="text-align: center;">
+        <h1 style="margin-bottom: 10px;">欢迎使用学生管理系统后台</h1>
+        <p>高效管理学生信息与考试成绩，助力教育管理更智能。</p>
+      </blockquote>
+    </div>
+
+    <!-- 数据概览 -->
+    <div class="layui-col-md3">
+      <div class="layui-card">
+        <div class="layui-card-header">学生总数</div>
+        <div class="layui-card-body" style="text-align: center;">
+          <h2 style="color: #4CAF50;" class="student-count"></h2>
+          <p>实时统计当前系统中的学生数量</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="layui-col-md3">
+        <div class="layui-card">
+          <div class="layui-card-header">教师总数</div>
+          <div class="layui-card-body" style="text-align: center;">
+            <h2 style="color: #1433bd;" class="teacher-count"></h2>
+            <p>实时统计当前系统中的教师数量</p>
+          </div>
+        </div>
+      </div>
+
+    <div class="layui-col-md3">
+      <div class="layui-card">
+        <div class="layui-card-header">课程总数</div>
+        <div class="layui-card-body" style="text-align: center;">
+          <h2 style="color: #FFB800;" class="subject-count"></h2>
+          <p>系统中管理的课程数量</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="layui-col-md3">
+      <div class="layui-card">
+        <div class="layui-card-header">考试场次</div>
+        <div class="layui-card-body" style="text-align: center;">
+          <h2 style="color: #FF5722;" class="exam-count"></h2>
+          <p>系统中安排的考试总数</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统通知 -->
+    <div class="layui-col-md12">
+      <div class="layui-card">
+        <div class="layui-card-header">系统通知</div>
+        <div class="layui-card-body">
+          <ul id="notice-list" style="list-style-type: none; padding: 0;">
+            <!--插入通知处-->
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- 系统简介 -->
+    <div class="layui-col-md12">
+      <div class="layui-card">
+        <div class="layui-card-header">系统简介</div>
+        <div class="layui-card-body">
+          <p>学生管理系统是专为教育机构设计的综合管理平台。系统功能涵盖学生信息管理、成绩管理及考试安排等模块，帮助学校与教育机构实现数字化管理，提高工作效率。</p>
+          <p>管理员可以高效处理学生数据，教师便捷地查询考勤与考试信息，学生快速查看自己的成绩和出勤情况。</p>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+    layui.use(['layer', 'jquery', 'form'], function(){
+        var layer = layui.layer;
+        var $ = layui.jquery;
+        var form = layui.form;
+        
+        $.ajax({
+            url: '/get_count',
+            method: 'GET',
+            success: function(data) {
+                $('.student-count').text(data.student_count + ' 人');
+                $('.teacher-count').text(data.teacher_count + ' 人');
+                $('.subject-count').text(data.subject_count + ' 门');
+                $('.exam-count').text(data.exam_count + ' 场');
+            },
+            error: function(xhr, status, error) {
+                layer.msg('加载失败！')
+            }
+        })
+
+        $.ajax({
+            url: '/notices',
+            method:'GET',
+            success: function(data) {
+                var tbody = $('#notice-list');
+                tbody.empty();  // 清空表格内容
+
+                // 插入通知数据
+                data.forEach(function(notice) {
+                    var row = `
+                        <li>📢 <strong>${notice.created_time}：</strong> ${notice.content}</li>
+                    `;
+                    tbody.append(row);
+                });
+
+                form.render(); // 重新渲染表单
+            },
+            error: function(xhr, status, error) {
+                console.error('加载通知数据失败:', error);
+            }
+        })
+    })
+</script>
+</body>
+</html>

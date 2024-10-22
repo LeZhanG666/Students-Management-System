@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>登录</title>
+    <link rel="stylesheet" href="/static/css/layui.css">
+    <style>
+        /* 背景渐变样式 */
+        body {
+            min-height: 100vh; 
+            margin: 0; 
+            display: flex; 
+            flex-direction: column; 
+            justify-content: center; 
+            align-items: center; 
+            position: relative; /* 相对定位以包含绝对定位的元素 */
+            overflow: hidden; /* 防止滚动条 */
+            background: linear-gradient(to bottom, #000, #434343); /* 黑色渐变背景 */
+        }
+
+        /* 标题样式 */
+        .title {
+            font-size: 24px; /* 字体大小 */
+            color: #fff; /* 字体颜色 */
+            text-align: center; /* 水平居中 */
+            margin-bottom: 20px; /* 标题与登录框之间的间距 */
+            position: relative; /* 使标题在背景上可见 */
+        }
+
+        /* 登录框样式 */
+        .demo-login-container {
+            width: 360px; 
+            padding: 30px; 
+            background-color: white; /* 确保登录框背景为白色，不透明 */
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1); 
+            border-radius: 8px; 
+            position: relative; /* 使登录框在背景上可见 */
+        }
+
+        /* 粒子效果画布 */
+        #particleCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0; /* 确保在背景 */
+        }
+
+        /* 验证码画布 */
+        #captchaCanvas {
+            border: 2px solid #ccc; 
+            border-radius: 5px; 
+            display: inline-block; 
+            vertical-align: middle; 
+            position: relative; 
+            z-index: 1; /* 确保在粒子效果之上 */
+            cursor: pointer; /* 鼠标悬停效果 */
+            transition: transform 0.2s; /* 添加动画效果 */
+        }
+
+        /* 鼠标悬停效果 */
+        #captchaCanvas:hover {
+            transform: scale(1.05); /* 放大效果 */
+            border-color: #66b3ff; /* 改变边框颜色 */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="particleCanvas"></canvas> <!-- 粒子效果的 Canvas -->
+    <h1 class="title">学生管理系统</h1> <!-- 添加标题 -->
+    <div class="demo-login-container">
+        <form class="layui-form"> <!-- 移除 action 和 method 属性 -->
+            <div class="layui-form-item">
+                <div class="layui-input-wrap">
+                    <div class="layui-input-prefix">
+                        <i class="layui-icon layui-icon-username"></i>
+                    </div>
+                    <input type="text" name="username" lay-verify="required" placeholder="用户名" lay-reqtext="请填写用户名" autocomplete="off" class="layui-input" lay-affix="clear">
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <div class="layui-input-wrap">
+                    <div class="layui-input-prefix">
+                        <i class="layui-icon layui-icon-password"></i>
+                    </div>
+                    <input type="password" name="password" lay-verify="required" placeholder="密   码" lay-reqtext="请填写密码" autocomplete="off" class="layui-input" lay-affix="eye">
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <div class="layui-row">
+                    <div class="layui-col-xs7">
+                        <div class="layui-input-wrap">
+                            <div class="layui-input-prefix">
+                                <i class="layui-icon layui-icon-vercode"></i>
+                            </div>
+                            <input type="text" name="captcha" lay-verify="required" placeholder="验证码" lay-reqtext="请填写验证码" autocomplete="off" class="layui-input" lay-affix="clear">
+                        </div>
+                    </div>
+                    <div class="layui-col-xs5">
+                        <div style="margin-left: 10px;">
+                            <canvas id="captchaCanvas" width="140" height="35"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="layui-form-item">
+                <input type="checkbox" name="remember" lay-skin="primary" title="记住密码" id="rememberMe">
+                <a href="#forget" style="float: right; margin-top: 7px;">忘记密码？</a>
+            </div>
+
+            <div class="layui-form-item">
+                <button class="layui-btn layui-btn-fluid" lay-submit lay-filter="demo-login">登录</button>
+            </div>
+
+            <div class="layui-form-item demo-login-other">
+                <a href="/register">注册帐号</a>
+            </div>
+        </form>
+    </div>
+
+    <script src="/static/layui.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        // 粒子效果
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        let particles = [];
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 5 + 1;
+                this.speedX = Math.random() * 3 - 1.5;
+                this.speedY = Math.random() * 3 - 1.5;
+            }
+
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+
+                // 边界检测
+                if (this.x > canvas.width || this.x < 0) this.speedX *= -1;
+                if (this.y > canvas.height || this.y < 0) this.speedY *= -1;
+            }
+
+            draw() {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function init() {
+            particles = [];
+            for (let i = 0; i < 100; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particles.forEach(particle => {
+                particle.update();
+                particle.draw();
+            });
+            connectParticles();
+            requestAnimationFrame(animate);
+        }
+
+        function connectParticles() {
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+
+                    if (distance < 80) { // 可以调节连线的距离
+                        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+                        ctx.lineWidth = 1;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            init();
+        });
+
+        // 初始化粒子和动画
+        init();
+        animate();
+
+        // 验证码相关代码
+        $(document).ready(function() {
+            var captchaCode = [];
+
+            // 页面加载时检查 localStorage 中是否有保存的用户名和密码
+            if (localStorage.getItem('rememberMe') === 'true') {
+                $('input[name="username"]').val(localStorage.getItem('username'));
+                $('input[name="password"]').val(localStorage.getItem('password'));
+                $('#rememberMe').prop('checked', true); // 记住密码复选框保持选中
+            }
+
+            // 初始化验证码
+            drawCaptcha();
+
+            // 点击验证码图片刷新
+            $('#captchaCanvas').on('click', drawCaptcha);
+
+            // 登录表单提交事件
+            layui.use(['form', 'layer'], function() {
+                var form = layui.form;
+                var layer = layui.layer;
+
+                form.on('submit(demo-login)', function(data) {
+                    var field = data.field;
+
+                    // 验证码校验
+                    if (field.captcha.toLowerCase() !== captchaCode.join('')) {
+                        layer.msg('验证码错误，请重试！');
+                        drawCaptcha();
+                        return false;
+                    }
+
+                    // 如果勾选了"记住密码"，则保存用户名和密码
+                    if ($('#rememberMe').is(':checked')) {
+                        localStorage.setItem('username', field.username);
+                        localStorage.setItem('password', field.password);
+                        localStorage.setItem('rememberMe', 'true');
+                    } else {
+                        // 未勾选时，清除存储的信息
+                        localStorage.removeItem('username');
+                        localStorage.removeItem('password');
+                        localStorage.setItem('rememberMe', 'false');
+                    }
+
+                    // 处理登录逻辑
+                    $.ajax({
+                        url: '/login',
+                        type: 'POST',
+                        data: field,
+                        success: function(response) {
+                            if (response.success) {
+                                layer.msg('登录成功');
+                                if(response.role == "admin"){
+                                    window.location.href = '/admin-html';
+                                }
+                                else if (response.role == "student"){
+                                    window.location.href = '/student-html';
+                                }
+                                else{
+                                    window.location.href = '/teacher-html';
+                                }
+                            } else {
+                                layer.msg(response.message);
+                            }
+                        },
+                        error: function() {
+                            layer.msg('登录失败，请稍后重试');
+                        }
+                    });
+
+                    return false; // 阻止默认表单提交
+                });
+            });
+
+            function drawCaptcha() {
+                captchaCode = []; // 清空验证码数组
+                var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                var canvas = document.getElementById('captchaCanvas');
+                var context = canvas.getContext('2d');
+
+                context.clearRect(0, 0, canvas.width, canvas.height);
+                context.fillStyle = '#fff';
+                context.fillRect(0, 0, canvas.width, canvas.height);
+
+                for (var i = 0; i < 4; i++) {
+                    var char = chars.charAt(Math.floor(Math.random() * chars.length));
+                    captchaCode.push(char.toLowerCase());
+                    context.font = '24px Arial';
+                    context.fillStyle = getRandomColor(); // 使用随机颜色
+                    context.fillText(char, 30 * i + 20, 30);
+                }
+
+                // 绘制干扰线
+                for (var i = 0; i < 5; i++) {
+                    context.beginPath();
+                    context.moveTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                    context.lineTo(Math.random() * canvas.width, Math.random() * canvas.height);
+                    context.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                    context.stroke();
+                }
+            }
+
+            // 随机生成颜色
+            function getRandomColor() {
+                const letters = '0123456789ABCDEF';
+                let color = '#';
+                for (let i = 0; i < 6; i++) {
+                    color += letters[Math.floor(Math.random() * 16)];
+                }
+                return color;
+            }
+        });
+    </script>
+</body>
+</html>

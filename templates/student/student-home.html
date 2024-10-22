@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>学生管理系统 - 学生主页</title>
+  <link rel="stylesheet" href="/static/css/layui.css">
+
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color:#f1f8f8;
+    }
+
+    /* 顶部欢迎横幅 */
+    .welcome-banner {
+      background: linear-gradient(to bottom, #37474f, #263238); /* 深灰色渐变 */
+      color: white;
+      padding: 30px;
+      text-align: center;
+      font-size: 26px;
+      font-weight: bold;
+      letter-spacing: 1px;
+    }
+
+    /* 信息块容器 */
+    .info-blocks {
+      display: flex;
+      justify-content: space-around;
+      padding: 30px 15px;
+      color: white;
+    }
+
+    /* 信息块样式 */
+    .info-block {
+      flex: 1;
+      margin: 10px;
+      background: linear-gradient(to bottom, #37474f, #263238); /* 深灰色渐变 */
+      padding: 25px;
+      border-radius: 12px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      color: white;
+    }
+
+    .info-block:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.7);
+    }
+
+    .info-block h2 {
+      font-size: 40px;
+      margin: 15px 0;
+    }
+
+    .info-block p {
+      font-size: 18px;
+    }
+
+    /* 通知列表容器 */
+    .notice-section {
+      background: linear-gradient(to bottom, #37474f, #263238); /* 深灰色渐变 */
+      margin: 20px;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      color: white;
+    }
+
+    .notice-section h2 {
+      font-size: 22px;
+      margin-bottom: 15px;
+      color: #ffcc80; /* 柔和的橙色标题 */
+    }
+
+    .notice-list {
+      list-style: none;
+      padding: 0;
+    }
+
+    .notice-list li {
+      padding: 12px 0;
+      border-bottom: 1px solid #546e7a;
+    }
+
+    .notice-list li:last-child {
+      border-bottom: none;
+    }
+
+    /* 响应式布局 */
+    @media (max-width: 768px) {
+      .info-blocks {
+        flex-direction: column;
+      }
+
+      .info-block {
+        margin-bottom: 15px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- 欢迎横幅 -->
+  <div class="welcome-banner">
+    欢迎回来！学生管理系统
+  </div>
+
+  <!-- 信息块 -->
+  <div class="info-blocks">
+    <div class="info-block">
+      <h2 class="exam-count"></h2>
+      <p>可查看的考试</p>
+    </div>
+    <div class="info-block">
+      <h2 class="student-class-count"></h2>
+      <p>本班同学数</p>
+    </div>
+  </div>
+
+  <!-- 通知部分 -->
+  <div class="notice-section">
+    <h2>系统通知</h2>
+    <ul class="notice-list" id="notice-list">
+      <!-- 通知数据插入处 -->
+    </ul>
+  </div>
+
+  <script>
+    layui.use(['layer', 'jquery', 'form'], function () {
+      var $ = layui.jquery;
+      var layer = layui.layer;
+
+      // 获取考试场次、课程数量等信息
+      $.ajax({
+        url: '/get_count',
+        method: 'GET',
+        success: function (data) {
+          $('.exam-count').text(data.exam_with_scores_count + ' 场');
+          $('.student-class-count').text(data.student_class_count + ' 人');
+
+        },
+        error: function () {
+          layer.msg('数据加载失败！');
+        }
+      });
+
+      // 获取系统通知
+      $.ajax({
+        url: '/notices',
+        method: 'GET',
+        success: function (data) {
+          var noticeList = $('#notice-list');
+          noticeList.empty();
+
+          data.forEach(function (notice) {
+            var listItem = `
+              <li>📢 <strong>${notice.created_time}:</strong> ${notice.content}</li>
+            `;
+            noticeList.append(listItem);
+          });
+        },
+        error: function () {
+          console.error('加载通知失败');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

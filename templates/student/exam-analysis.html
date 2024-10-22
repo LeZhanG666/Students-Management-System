@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>考试分析</title>
+    <link href="/static/css/layui.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <style>
+        .analysis-header {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            flex-wrap: wrap;
+        }
+        .analysis-header div {
+            text-align: center;
+            flex: 1;
+            min-width: 150px;
+        }
+        .chart-section {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+            margin: 20px 0;
+            margin-bottom: 50px;
+        }
+        .chart-container {
+            width: 45%; /* 两个图表并排 */
+            min-width: 300px;
+            height: 400px;
+        }
+    </style>
+</head>
+<body>
+    <div class="layui-card">
+        <div class="layui-card-header">考试分析</div>
+        <div class="layui-card-body">
+            <form class="layui-form" id="exam-form">
+                <div id="exam-list"></div> <!-- 动态插入考试列表 -->
+                <button type="button" id="view-analysis" class="layui-btn layui-btn-normal">查看分析</button>
+            </form>
+
+            <!-- 核心分析数据展示 -->
+            <div id="core-data" class="analysis-header" style="display: none;">
+                <div>本次考试分数：<span id="student-score"></span></div>
+                <div>本次年级平均分：<span id="average-score"></span></div>
+                <div>本次班级排名：<span id="class-rank"></span></div>
+                <div>本次年级排名：<span id="student-rank"></span></div>
+            </div>
+
+            <!-- 图表展示 -->
+            <div class="chart-section" id="analysis-content" style="display: none;">
+                <div class="chart-container">
+                    <canvas id="scoreChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="rankChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="classPieChart"></canvas>
+                </div>
+                <div class="chart-container">
+                    <canvas id="gradePieChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        layui.use(['jquery', 'form', 'layer'], function() {
+            var $ = layui.$;
+            var form = layui.form;
+            var layer = layui.layer;
+
+            let myCharts = {}; // 用于保存图表实例
+
+            function loadExams() {
+                $.ajax({
+                    url: '/student_exams',
+                    method: 'GET',
+                    success: function(data) {
+                        var examList = $('#exam-list').empty();
+                        data.exams.forEach(function(exam) {
+                            examList.append(`
+                                <div class="layui-form-item">
+                                    <input type="radio" name="exam" value="${exam.exam_id}" title="${exam.exam_name}">
+                                </div>
+                            `);
+                        });
+                        form.render();
+                    },
+                    error: function() {
+                        console.error('加载考试列表失败');
+                    }
+                });
+            }
+
+            $('#view-analysis').click(function() {
+                var examId = $('input[name="exam"]:checked').val();
+                if (!examId) {
+                    layer.msg('请选择一个考试进行分析！');
+                    return;
+                }
+
+                $.ajax({
+                    url: `/exam_analysis?exam_id=${examId}`,
+                    method: 'GET',
+                    success: function(data) {
+                        $('#student-score').text(data.student_score);
+                        $('#average-score').text(data.average_score);
+                        $('#class-rank').text(data.class_rank + '/' + data.class_total_participants);
+                        $('#student-rank').text(data.student_rank + '/' + data.total_participants);
+                        $('#core-data').show();
+
+                        renderScoreChart(data.average_score, data.student_score);
+                        renderRankChart(data.overall_ranks, data.class_ranks);
+                        renderPieChart('classPieChart', data.class_rank, data.class_total_participants, '班级');
+                        renderPieChart('gradePieChart', data.student_rank, data.total_participants, '年级');
+                        $('#analysis-content').show();
+                    },
+                    error: function() {
+                        console.error('获取考试分析失败');
+                    }
+                });
+            });
+
+            function destroyChart(chartId) {
+                if (myCharts[chartId]) {
+                    myCharts[chartId].destroy();
+                    delete myCharts[chartId];
+                }
+            }
+
+            function renderScoreChart(average, student) {
+                destroyChart('scoreChart');
+                const ctx = document.getElementById('scoreChart').getContext('2d');
+                myCharts['scoreChart'] = new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['年级平均分', '您的成绩'],
+                        datasets: [
+                            {
+                                label: '年级平均分',
+                                data: [average, null],
+                                backgroundColor: 'rgba(75, 192, 192, 0.5)',
+                                borderColor: 'rgba(75, 192, 192, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: '您的成绩',
+                                data: [null, student],
+                                backgroundColor: 'rgba(153, 102, 255, 0.5)',
+                                borderColor: 'rgba(153, 102, 255, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    text: '分数',
+                                    display: true
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function renderRankChart(overallRanks, classRanks) {
+                destroyChart('rankChart');
+                const ctx = document.getElementById('rankChart').getContext('2d');
+                myCharts['rankChart'] = new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: overallRanks.map((_, i) => `考试${i + 1}`),
+                        datasets: [
+                            { label: '年级排名', data: overallRanks, borderColor: 'rgba(255, 99, 132, 1)', backgroundColor: 'rgba(255, 99, 132, 0.2)', fill: 'start' },
+                            { label: '班级排名', data: classRanks, borderColor: 'rgba(54, 162, 235, 1)', backgroundColor: 'rgba(54, 162, 235, 0.2)', fill: 'start' }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        scales: { y: { reverse: true, ticks: { stepSize: 1 } } }
+                    }
+                });
+            }
+
+            function renderPieChart(chartId, rank, total, label) {
+                destroyChart(chartId);
+                const ctx = document.getElementById(chartId).getContext('2d');
+                myCharts[chartId] = new Chart(ctx, {
+                    type: 'pie',
+                    data: {
+                        labels: [label + '超过人数', label + '未超过人数'],
+                        datasets: [{
+                            data: [total - rank, rank],
+                            backgroundColor: ['rgba(54, 162, 235, 0.5)', 'rgba(255, 99, 132, 0.5)']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        plugins: {
+                            legend: { display: true, position: 'top' },
+                            datalabels: {
+                                formatter: (value, ctx) => {
+                                    let sum = ctx.chart.data.datasets[0].data.reduce((a, b) => a + b, 0);
+                                    let percentage = (value / sum * 100).toFixed(2) + '%';
+                                    return percentage;
+                                },
+                                color: '#fff',
+                                font: { weight: 'bold' }
+                            }
+                        }
+                    },
+                    plugins: [ChartDataLabels]
+                });
+            }
+
+            loadExams();
+        });
+    </script>
+</body>
+</html>
