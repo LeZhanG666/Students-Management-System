@@ -17,7 +17,7 @@
    
    ```bash
    git clone https://gitee.com/Le2hanG/Students-Management-System.git
-   cd student-management-system
+   cd Student-Management-System
    ```
    
 2. **创建并激活虚拟环境**
